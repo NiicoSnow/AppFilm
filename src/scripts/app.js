@@ -12,6 +12,10 @@ let currentPage = 1;
 let currentQuery = "";
 let totalPages = 1;
 
+document.getElementById("sortSelect").addEventListener("change", () => {
+    chercherFilms(currentQuery, currentPage); // Recharge la page actuelle avec le nouveau tri
+  });
+
 // Gérer l’input de recherche
 searchBar.addEventListener("input", () => {
   const query = searchBar.value.trim();
@@ -52,8 +56,20 @@ function afficherSuggestions(results) {
   
     if (!results || results.length === 0) return;
   
-    // 🔤 Trie les films par ordre alphabétique du titre
-    results.sort((a, b) => a.title.localeCompare(b.title));
+    const sortValue = document.getElementById("sortSelect").value;
+  
+    // 🔀 Appliquer le tri choisi
+    if (sortValue === "alpha") {
+      results.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortValue === "date") {
+      results.sort((a, b) => {
+        const dateA = new Date(a.release_date || "1900-01-01");
+        const dateB = new Date(b.release_date || "1900-01-01");
+        return dateB - dateA;
+      });
+    } else if (sortValue === "note") {
+      results.sort((a, b) => b.vote_average - a.vote_average);
+    }
   
     results.forEach(film => {
       const div = document.createElement("div");
