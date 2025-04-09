@@ -1,76 +1,106 @@
-"use strict"
-
 const searchBar = document.getElementById("searchBar");
 const suggestionsBox = document.getElementById("suggestions");
 const resultBox = document.getElementById("result");
+const pagination = document.getElementById("pagination");
+const pageInfo = document.getElementById("pageInfo");
+const prevPageBtn = document.getElementById("prevPage");
+const nextPageBtn = document.getElementById("nextPage");
 
 const API_BASE = "https://web.mayfly.ovh/proxy/movie.php?endpoint=";
 
-searchBar.addEventListener("input", async () => {
-  const query = searchBar.value.trim();
+let currentPage = 1;
+let currentQuery = "";
+let totalPages = 1;
 
+// Gérer l’input de recherche
+searchBar.addEventListener("input", () => {
+  const query = searchBar.value.trim();
   if (query.length < 3) {
     suggestionsBox.innerHTML = "";
+    pagination.style.display = "none";
     return;
   }
+  chercherFilms(query, 1);
+});
 
-  try {
-    const res = await fetch(`${API_BASE}search/movie?query=${encodeURIComponent(query)}`);
-    const data = await res.json();
+// Rechercher films avec pagination
+async function chercherFilms(query, page = 1) {
+    try {
+      const endpoint = `search/movie?query=${encodeURIComponent(query)}&page=${page}`;
+      const res = await fetch(`${API_BASE}${encodeURIComponent(endpoint)}`);
+      const data = await res.json();
+  
+      currentQuery = query;
+      currentPage = data.page;
+      totalPages = data.total_pages;
+  
+      afficherSuggestions(data.results);
+  
+      // Gestion pagination
+      pagination.style.display = totalPages > 1 ? "block" : "none";
+      pageInfo.textContent = `Page ${currentPage} sur ${totalPages}`;
+      prevPageBtn.disabled = currentPage === 1;
+      nextPageBtn.disabled = currentPage === totalPages;
+    } catch (err) {
+      console.error("Erreur lors de la recherche :", err);
+    }
+  }
 
+// Afficher suggestions (avec titre + année)
+function afficherSuggestions(results) {
     suggestionsBox.innerHTML = "";
-
-    if (data.results && data.results.length > 0) {
-    data.results.slice(0, 5).forEach(film => {
-        const div = document.createElement("div");
-        div.className = "suggestion";
-        const releaseYear = film.release_date ? film.release_date.split("-")[0] : "Année inconnue";
-        div.textContent = `${film.title} (${releaseYear})`;
-        div.addEventListener("click", () => {
+  
+    if (!results || results.length === 0) return;
+  
+    // 🔤 Trie les films par ordre alphabétique du titre
+    results.sort((a, b) => a.title.localeCompare(b.title));
+  
+    results.forEach(film => {
+      const div = document.createElement("div");
+      const releaseYear = film.release_date ? film.release_date.split("-")[0] : "Année inconnue";
+      div.className = "suggestion";
+      div.textContent = `${film.title} (${releaseYear})`;
+      div.addEventListener("click", () => {
         searchBar.value = film.title;
         suggestionsBox.innerHTML = "";
+        pagination.style.display = "none";
         afficherFilm(film.id);
-        });
-        suggestionsBox.appendChild(div);
+      });
+      suggestionsBox.appendChild(div);
     });
-} else {
-  // Aucune suggestion trouvée, on vide la zone
-  suggestionsBox.innerHTML = "";
-}
-  } catch (err) {
-    console.error("Erreur lors de la recherche :", err);
   }
-});
 
+// Clic sur touche Entrée : on lance la recherche page 1
 searchBar.addEventListener("keypress", function (e) {
   if (e.key === "Enter") {
-    rechercherFilmParTitre(searchBar.value);
-    suggestionsBox.innerHTML = "";
+    const query = searchBar.value.trim();
+    if (query.length >= 3) {
+      chercherFilms(query, 1);
+    }
   }
 });
 
-async function rechercherFilmParTitre(titre) {
-  try {
-    const res = await fetch(`${API_BASE}search/movie?query=${encodeURIComponent(titre)}`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      afficherFilm(data.results[0].id);
-    } else {
-      resultBox.innerHTML = "<p>Film non trouvé.</p>";
-    }
-  } catch (err) {
-    console.error("Erreur de recherche par titre :", err);
-    resultBox.innerHTML = "<p>Erreur lors de la recherche.</p>";
+// Boutons pagination
+prevPageBtn.addEventListener("click", () => {
+  if (currentPage > 1) {
+    chercherFilms(currentQuery, currentPage - 1);
   }
-}
+});
 
+nextPageBtn.addEventListener("click", () => {
+  if (currentPage < totalPages) {
+    chercherFilms(currentQuery, currentPage + 1);
+  }
+});
+
+// Afficher les infos détaillées d’un film
 async function afficherFilm(id) {
   try {
     const res = await fetch(`${API_BASE}movie/${id}`);
     const film = await res.json();
 
     resultBox.innerHTML = `
-      <h2>${film.title} (${film.release_date?.split("-")[0] ?? "Année inconnue"})</h2>
+      <h2>${film.title} (${film.release_date?.split("-")[0] ?? "?"})</h2>
       <p><strong>Langue originale :</strong> ${film.original_language}</p>
       <p><strong>Résumé :</strong> ${film.overview}</p>
       ${film.poster_path ? `<img src="https://image.tmdb.org/t/p/w300${film.poster_path}" alt="${film.title}">` : ""}
