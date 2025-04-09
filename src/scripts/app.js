@@ -111,19 +111,28 @@ nextPageBtn.addEventListener("click", () => {
 
 // Afficher les infos détaillées d’un film
 async function afficherFilm(id) {
-  try {
-    const res = await fetch(`${API_BASE}movie/${id}`);
-    const film = await res.json();
-
-    resultBox.innerHTML = `
-      <h2>${film.title} (${film.release_date?.split("-")[0] ?? "?"})</h2>
-      <p><strong>Langue originale :</strong> ${film.original_language}</p>
-      <p><strong>Résumé :</strong> ${film.overview}</p>
-      ${film.poster_path ? `<img src="https://image.tmdb.org/t/p/w300${film.poster_path}" alt="${film.title}">` : ""}
-      <pre>${JSON.stringify(film, null, 2)}</pre>
-    `;
-  } catch (err) {
-    console.error("Erreur d'affichage du film :", err);
-    resultBox.innerHTML = "<p>Impossible de récupérer les détails du film.</p>";
-  }
+    try {
+      const res = await fetch(`${API_BASE}movie/${id}`);
+      const film = await res.json();
+  
+      const releaseYear = film.release_date ? film.release_date.split("-")[0] : "Année inconnue";
+      const genres = film.genres?.map(g => g.name).join(", ") || "Non spécifié";
+      const langue = film.original_language || "N/A";
+      const note = film.vote_average ? `${film.vote_average} / 10 (${film.vote_count} votes)` : "Non noté";
+      const duree = film.runtime ? `${film.runtime} minutes` : "Durée inconnue";
+  
+      resultBox.innerHTML = `
+        <h2>${film.title} (${releaseYear})</h2>
+        <p><strong>Langue originale :</strong> ${langue}</p>
+        <p><strong>Genres :</strong> ${genres}</p>
+        <p><strong>Durée :</strong> ${duree}</p>
+        <p><strong>Note :</strong> ${note}</p>
+        <p><strong>Résumé :</strong> ${film.overview || "Pas de synopsis disponible."}</p>
+        ${film.backdrop_path ? `<img src="https://image.tmdb.org/t/p/w780${film.backdrop_path}" alt="Backdrop" style="width:100%; border-radius: 8px; margin-bottom: 10px;">` : ""}
+        ${film.poster_path ? `<img src="https://image.tmdb.org/t/p/w300${film.poster_path}" alt="Affiche">` : ""}
+      `;
+    } catch (err) {
+      console.error("Erreur d'affichage du film :", err);
+      resultBox.innerHTML = "<p>Impossible de récupérer les détails du film.</p>";
+    }  
 }
